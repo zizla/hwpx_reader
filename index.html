@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DocuHWPX - HWPX to Markdown & PDF 변환기 (100% 로컬 메모리 처리)</title>
+  <meta name="description" content="한컴오피스 HWPX 파일을 서버 전송 없이 브라우저 메모리에서 직접 읽어 마크다운(MD) 및 PDF로 변환하는 초고속 보안 웹 애플리케이션">
+  <link rel="stylesheet" href="style.css">
+  <!-- Google Fonts: Pretendard alternative & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Noto+Sans+KR:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+  <!-- Ambient Background Lighting -->
+  <div class="ambient-glow no-print">
+    <div class="glow-orb-1"></div>
+    <div class="glow-orb-2"></div>
+  </div>
+
+  <div class="app-wrapper">
+    <!-- Header -->
+    <header class="app-header no-print">
+      <div class="brand-section">
+        <div class="brand-icon">H</div>
+        <div class="brand-info">
+          <h1>DocuHWPX Studio</h1>
+          <p>HWPX → Markdown & PDF 보안 변환 엔진</p>
+        </div>
+      </div>
+
+      <div class="header-badges">
+        <div class="badge-security">
+          <span class="badge-pulse"></span>
+          <span>100% 로컬 메모리 처리 (No Server)</span>
+        </div>
+        <button id="btnThemeToggle" class="btn-icon-toggle" title="테마 전환" aria-label="테마 전환">☀️</button>
+      </div>
+    </header>
+
+    <!-- Upload & Hero Section -->
+    <section id="uploadHero" class="upload-hero no-print">
+      <div id="dropZone" class="drop-zone" tabindex="0" role="button" aria-label="HWPX 파일 업로드 영역">
+        <input type="file" id="fileInput" accept=".hwpx,.zip" style="display:none;" />
+        
+        <div class="drop-content">
+          <div class="upload-icon-wrapper">
+            📂
+          </div>
+          <h2 class="drop-title">HWPX 문서를 이곳에 끌어다 놓으세요</h2>
+          <p class="drop-subtitle">
+            한컴오피스 .hwpx 파일을 열어 마크다운(MD) 및 고화질 PDF로 즉시 변환합니다.
+            모든 처리는 사용자 PC 메모리(RAM) 내부에서만 수행됩니다.
+          </p>
+
+          <div class="drop-actions">
+            <button type="button" id="btnSelectFile" class="btn-primary">
+              📁 파일 찾아보기 (.hwpx)
+            </button>
+            <button type="button" id="btnLoadSample" class="btn-secondary btn-sample" title="샘플 문서로 즉시 테스트">
+              ✨ 샘플 문서 즉시 체험하기
+            </button>
+            <button type="button" id="btnDownloadSample" class="btn-secondary" title="샘플 .hwpx 파일 다운로드">
+              📥 샘플 HWPX 다운로드
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Security & Architecture Information Grid -->
+      <div class="privacy-grid">
+        <div class="privacy-card">
+          <div class="privacy-icon">🛡️</div>
+          <div class="privacy-info">
+            <h4>완전한 프라이버시 보장</h4>
+            <p>업로드된 파일이 외부 서버나 인터넷으로 전송되지 않습니다. 브라우저 내부에서만 파싱되므로 사내 대외비 문서도 안심하고 변환할 수 있습니다.</p>
+          </div>
+        </div>
+
+        <div class="privacy-card">
+          <div class="privacy-icon">⚡</div>
+          <div class="privacy-info">
+            <h4>무설치 & 오프라인 작동</h4>
+            <p>Python, 백엔드 서버 등 추가 프로그램 설치가 일절 필요 없습니다. 인터넷 연결을 해제한 오프라인 환경에서도 100% 정상 작동합니다.</p>
+          </div>
+        </div>
+
+        <div class="privacy-card">
+          <div class="privacy-icon">📑</div>
+          <div class="privacy-info">
+            <h4>표 및 서식 구조 보존</h4>
+            <p>KS X 6101 HWPX 표준 구조를 분석하여 본문 제목, 문단 서식, 글자 강조, 표(Table) 구조를 마크다운과 A4 규격 PDF로 완벽히 재현합니다.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Progress Indicator Card (Hidden by default) -->
+    <div id="progressCard" class="progress-card no-print" style="display: none;">
+      <div class="spinner"></div>
+      <h3 class="progress-title">HWPX 문서 처리 중</h3>
+      <p id="progressMsg" class="progress-msg">파일을 분석하고 있습니다...</p>
+    </div>
+
+    <!-- Main Workspace Section (Displayed after file load) -->
+    <main id="workspaceSection" class="workspace-section">
+      <!-- Toolbar -->
+      <div class="toolbar-bar no-print">
+        <div class="file-meta-chip">
+          <span class="file-badge-hwpx">HWPX</span>
+          <span id="fileNameDisplay" class="file-name-text">document.hwpx</span>
+          <div id="fileStatsDisplay" class="file-stats-summary">
+            <!-- Dynamic stats pills -->
+          </div>
+        </div>
+
+        <div class="toolbar-actions">
+          <button id="btnExportMd" class="btn-export btn-export-md" title="마크다운 파일 다운로드">
+            📥 마크다운 (.md) 저장
+          </button>
+          <button id="btnCopyMd" class="btn-export btn-copy" title="마크다운 내용 클립보드 복사">
+            📋 마크다운 복사
+          </button>
+          <button id="btnPrintPdf" class="btn-export btn-export-pdf-print" title="브라우저 인쇄 다이얼로그를 통해 선명한 벡터 PDF로 저장">
+            🖨️ PDF 인쇄 / 저장 (권장)
+          </button>
+          <button id="btnDownloadPdf" class="btn-export btn-export-pdf-dl" title="HTML2PDF를 통한 1클릭 PDF 다운로드">
+            ⚡ PDF 직접 다운로드
+          </button>
+          <button id="btnReset" class="btn-export btn-reload" title="새 파일 열기">
+            🔄 다른 파일 열기
+          </button>
+        </div>
+      </div>
+
+      <!-- View Mode Tabs -->
+      <div class="view-mode-bar no-print">
+        <div class="tab-nav">
+          <button id="tabDocView" class="tab-btn active">
+            📄 문서 양식 뷰 (A4 인쇄 미리보기)
+          </button>
+          <button id="tabMdView" class="tab-btn">
+            📝 마크다운 소스 편집기
+          </button>
+        </div>
+      </div>
+
+      <!-- Content Viewer Container -->
+      <div class="content-viewer">
+        <!-- 1. Document Page View (Paper Simulation) -->
+        <div id="docViewContainer" class="document-view-container">
+          <article id="documentPage" class="document-page" aria-label="문서 미리보기">
+            <!-- Rendered HTML from Markdown inserted here -->
+          </article>
+        </div>
+
+        <!-- 2. Markdown Source View -->
+        <div id="mdViewContainer" class="markdown-view-container">
+          <div class="editor-header">
+            <span>마크다운 원본 (수정 시 실시간으로 문서 양식 뷰에 반영됩니다)</span>
+            <span id="wordCountDisplay">글자 수: 0 | 줄 수: 0</span>
+          </div>
+          <textarea id="markdownTextarea" class="markdown-textarea" placeholder="마크다운 내용이 여기에 표시됩니다..." spellcheck="false"></textarea>
+        </div>
+      </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="app-footer no-print">
+      <p>DocuHWPX Studio • 한컴오피스 HWPX (KS X 6101) 순수 클라이언트 전용 변환기</p>
+      <p>모든 데이터는 사용자 브라우저의 RAM 메모리에서만 즉시 처리되며 외부로 저장되거나 전송되지 않습니다.</p>
+    </footer>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div id="toastContainer" class="toast-container no-print" aria-live="polite"></div>
+
+  <!-- Local Libraries (100% Offline Support with CDN Fallback) -->
+  <script src="jszip.min.js"></script>
+  <script>
+    if (typeof JSZip === 'undefined') {
+      document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"><\/script>');
+    }
+  </script>
+
+  <script src="marked.min.js"></script>
+  <script>
+    if (typeof marked === 'undefined') {
+      document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"><\/script>');
+    }
+  </script>
+
+  <script src="html2pdf.bundle.min.js"></script>
+  <script>
+    if (typeof html2pdf === 'undefined') {
+      document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"><\/script>');
+    }
+  </script>
+
+  <!-- Application Logic -->
+  <script src="hwpx-parser.js"></script>
+  <script src="sample-generator.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
