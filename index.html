@@ -1,205 +1,1092 @@
-<!DOCTYPE html>
-<html lang="ko" data-theme="dark">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>DocuHWPX - HWPX to Markdown & PDF 변환기 (100% 로컬 메모리 처리)</title>
-  <meta name="description" content="한컴오피스 HWPX 파일을 서버 전송 없이 브라우저 메모리에서 직접 읽어 마크다운(MD) 및 PDF로 변환하는 초고속 보안 웹 애플리케이션">
-  <link rel="stylesheet" href="style.css">
-  <!-- Google Fonts: Pretendard alternative & JetBrains Mono -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Noto+Sans+KR:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-</head>
-<body>
-  <!-- Ambient Background Lighting -->
-  <div class="ambient-glow no-print">
-    <div class="glow-orb-1"></div>
-    <div class="glow-orb-2"></div>
-  </div>
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>HWPX 편집 변환기</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+KR:wght@400;500;700&family=Noto+Sans+KR:wght@400;700&family=Noto+Serif+KR:wght@400;700&family=Nanum+Gothic:wght@400;700&family=Nanum+Myeongjo:wght@400;700&family=Gowun+Batang:wght@400;700&display=swap">
+<style>
+/* Layout: a working desk — file bar, formatting ribbon, settings rail on the left, A4 paper sheet in the centre, status line at the foot. */
+:root {
+  --desk: #e9ecf1;
+  --panel: #f8f9fb;
+  --line: #d3d8e1;
+  --ink: #1d2433;
+  --muted: #5d6779;
+  --accent: #2b4c7e;
+  --accent-soft: #dfe7f3;
+  --accent-ink: #ffffff;
+  --paper: #ffffff;
+  --paper-ink: #111111;
+  --paper-rule: #c9ced8;
+  --danger: #a3332b;
+  --ok: #2f6b3f;
+  --shadow: 0 1px 2px rgba(20, 30, 50, .08), 0 8px 24px rgba(20, 30, 50, .10);
+  --ui: "IBM Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --doc-font: "Noto Serif KR", "Nanum Myeongjo", "AppleMyungjo", serif;
+  --doc-size: 11pt;
+  --doc-lh: 1.7;
+  --doc-gap: 0.6em;
+  --margin-px: 75.6px;
+  --content-w: 642.5px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --desk: #161a22; --panel: #1e232d; --line: #333b49; --ink: #e4e8ef; --muted: #9aa4b5;
+    --accent: #8fb0e3; --accent-soft: #263553; --accent-ink: #0f1520;
+    --paper: #ffffff; --paper-ink: #111111; --paper-rule: #c9ced8;
+    --danger: #ef8a80; --ok: #8fcf9e;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 30px rgba(0,0,0,.45);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --desk: #161a22; --panel: #1e232d; --line: #333b49; --ink: #e4e8ef; --muted: #9aa4b5;
+  --accent: #8fb0e3; --accent-soft: #263553; --accent-ink: #0f1520;
+  --paper: #ffffff; --paper-ink: #111111; --paper-rule: #c9ced8;
+  --danger: #ef8a80; --ok: #8fcf9e;
+  --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 30px rgba(0,0,0,.45);
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  background: var(--desk); color: var(--ink); font-family: var(--ui); font-size: 14px;
+  display: flex; flex-direction: column; min-height: 100%;
+}
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--panel); }
+button, select, input { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
-  <div class="app-wrapper">
-    <!-- Header -->
-    <header class="app-header no-print">
-      <div class="brand-section">
-        <div class="brand-icon">H</div>
-        <div class="brand-info">
-          <h1>DocuHWPX Studio</h1>
-          <p>HWPX → Markdown & PDF 보안 변환 엔진</p>
-        </div>
-      </div>
+/* ---------- top bar ---------- */
+.bar {
+  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5;
+  background: var(--panel); border-bottom: 1px solid var(--line);
+}
+.bar-inner, .ribbon-inner, .status-inner {
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.bar-inner { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; padding-block: 10px; }
+.brand { display: flex; align-items: baseline; gap: 10px; min-width: 0; margin-right: auto; }
+.brand b { font-weight: 700; font-size: 15px; letter-spacing: -0.01em; white-space: nowrap; }
+.brand .fname {
+  font-family: var(--mono); font-size: 12px; color: var(--muted);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 36ch;
+}
+.actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.btn {
+  display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 12px;
+  border: 1px solid var(--line); background: var(--panel); color: var(--ink);
+  border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 500; white-space: nowrap;
+}
+.btn:hover { border-color: var(--accent); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.btn.primary:hover { filter: brightness(1.08); }
+.btn[disabled] { opacity: .5; cursor: progress; }
+.btn svg { width: 15px; height: 15px; flex: none; }
 
-      <div class="header-badges">
-        <div class="badge-security">
-          <span class="badge-pulse"></span>
-          <span>100% 로컬 메모리 처리 (No Server)</span>
-        </div>
-        <button id="btnThemeToggle" class="btn-icon-toggle" title="테마 전환" aria-label="테마 전환">☀️</button>
-      </div>
-    </header>
+/* ---------- ribbon ---------- */
+.ribbon { background: var(--panel); border-bottom: 1px solid var(--line); }
+.ribbon-inner { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding-block: 6px; }
+.grp { display: flex; align-items: center; gap: 2px; padding-right: 8px; margin-right: 2px; border-right: 1px solid var(--line); }
+.grp:last-child { border-right: 0; }
+.tb {
+  min-width: 30px; height: 30px; padding: 0 7px; border: 1px solid transparent; border-radius: 5px;
+  background: transparent; cursor: pointer; display: inline-flex; align-items: center; justify-content: center;
+  font-size: 13px;
+}
+.tb:hover { background: var(--accent-soft); }
+.tb.on { background: var(--accent-soft); border-color: var(--accent); }
+.tb svg { width: 16px; height: 16px; }
+.sel, .num {
+  height: 30px; border: 1px solid var(--line); border-radius: 5px; background: var(--panel); padding: 0 6px; font-size: 13px;
+}
+.num { width: 58px; font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.color { width: 30px; height: 30px; padding: 2px; border: 1px solid var(--line); border-radius: 5px; background: var(--panel); cursor: pointer; }
 
-    <!-- Upload & Hero Section -->
-    <section id="uploadHero" class="upload-hero no-print">
-      <div id="dropZone" class="drop-zone" tabindex="0" role="button" aria-label="HWPX 파일 업로드 영역">
-        <input type="file" id="fileInput" accept=".hwpx,.zip" style="display:none;" />
-        
-        <div class="drop-content">
-          <div class="upload-icon-wrapper">
-            📂
-          </div>
-          <h2 class="drop-title">HWPX 문서를 이곳에 끌어다 놓으세요</h2>
-          <p class="drop-subtitle">
-            한컴오피스 .hwpx 파일을 열어 마크다운(MD) 및 고화질 PDF로 즉시 변환합니다.
-            모든 처리는 사용자 PC 메모리(RAM) 내부에서만 수행됩니다.
-          </p>
+/* ---------- workspace ---------- */
+.work { flex: 1; display: grid; grid-template-columns: 248px minmax(0, 1fr); min-height: 0; }
+.rail {
+  border-right: 1px solid var(--line); background: var(--panel);
+  padding-block: 18px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: 16px;
+  display: flex; flex-direction: column; gap: 22px;
+}
+.rail h2 {
+  margin: 0 0 10px; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted);
+}
+.field { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 8px; margin-bottom: 10px; }
+.field label { font-size: 13px; }
+.field .sel { max-width: 140px; }
+.unit { font-family: var(--mono); font-size: 11px; color: var(--muted); margin-left: 4px; }
+.check { display: flex; align-items: flex-start; gap: 8px; font-size: 13px; margin-bottom: 8px; line-height: 1.45; }
+.check input { margin-top: 3px; accent-color: var(--accent); }
+.note { font-size: 12px; color: var(--muted); line-height: 1.55; margin: 0; }
+.spec {
+  font-family: var(--mono); font-size: 11.5px; color: var(--muted); line-height: 1.7;
+  border-top: 1px dashed var(--line); padding-top: 10px; font-variant-numeric: tabular-nums;
+}
 
-          <div class="drop-actions">
-            <button type="button" id="btnSelectFile" class="btn-primary">
-              📁 파일 찾아보기 (.hwpx)
-            </button>
-            <button type="button" id="btnLoadSample" class="btn-secondary btn-sample" title="샘플 문서로 즉시 테스트">
-              ✨ 샘플 문서 즉시 체험하기
-            </button>
-            <button type="button" id="btnDownloadSample" class="btn-secondary" title="샘플 .hwpx 파일 다운로드">
-              📥 샘플 HWPX 다운로드
-            </button>
-          </div>
-        </div>
-      </div>
+.desk { overflow: auto; padding-block: 28px 60px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.sheet {
+  width: calc(var(--content-w) + 2 * var(--margin-px)); max-width: 100%;
+  margin: 0 auto; background: var(--paper); color: var(--paper-ink);
+  box-shadow: var(--shadow); padding: var(--margin-px);
+  min-height: calc((var(--content-w) + 2 * var(--margin-px)) * 1.4142);
+  position: relative;
+}
+.sample-tag {
+  position: absolute; top: 10px; right: 12px; font-family: var(--mono); font-size: 11px;
+  color: #8a5a00; background: #fff4d6; border: 1px solid #ecd28f; padding: 2px 8px; border-radius: 99px;
+}
 
-      <!-- Security & Architecture Information Grid -->
-      <div class="privacy-grid">
-        <div class="privacy-card">
-          <div class="privacy-icon">🛡️</div>
-          <div class="privacy-info">
-            <h4>완전한 프라이버시 보장</h4>
-            <p>업로드된 파일이 외부 서버나 인터넷으로 전송되지 않습니다. 브라우저 내부에서만 파싱되므로 사내 대외비 문서도 안심하고 변환할 수 있습니다.</p>
-          </div>
-        </div>
+/* ---------- document typography (shared by editor and PDF stage) ---------- */
+.doc {
+  font-family: var(--doc-font); font-size: var(--doc-size); line-height: var(--doc-lh);
+  color: #111111; outline: none; word-break: keep-all; overflow-wrap: anywhere;
+}
+.doc > * { margin: 0 0 var(--doc-gap); }
+.doc h1 { font-size: 1.75em; line-height: 1.3; font-weight: 700; margin-top: .4em; }
+.doc h2 { font-size: 1.4em; line-height: 1.35; font-weight: 700; margin-top: .9em; }
+.doc h3 { font-size: 1.18em; line-height: 1.4; font-weight: 700; margin-top: .8em; }
+.doc h4, .doc h5, .doc h6 { font-size: 1.05em; font-weight: 700; margin-top: .7em; }
+.doc p:empty::before { content: "\200b"; }
+.doc ul, .doc ol { padding-left: 1.6em; }
+.doc li { margin: .15em 0; }
+.doc table { border-collapse: collapse; width: 100%; margin: .4em 0 var(--doc-gap); font-size: .95em; }
+.doc td, .doc th { border: 1px solid #555555; padding: 4px 7px; vertical-align: top; }
+.doc th { background: #f1f1f1; font-weight: 700; }
+.doc td > *, .doc th > * { margin: 0; }
+.doc img { max-width: 100%; height: auto; }
+.doc .fig { text-align: center; }
+.doc code { font-family: var(--mono); font-size: .9em; background: #f2f2f2; padding: 0 3px; }
+.doc blockquote { border-left: 3px solid #999999; padding-left: 12px; color: #333333; }
+.doc sup.fn { font-size: .7em; }
+.doc .notes { font-size: .9em; border-top: 1px solid #999999; padding-top: .5em; }
+.doc .page-break {
+  height: 0; border-top: 1px dashed #8a8f99; margin: 1.2em 0; position: relative; user-select: none;
+}
+.doc .page-break::after {
+  content: "쪽 나누기"; position: absolute; left: 50%; top: -0.7em; transform: translateX(-50%);
+  font-family: var(--mono); font-size: 10px; color: #6b7280; background: #ffffff; padding: 0 6px;
+}
+#stage .page-break { border-top: 0; margin: 0; }
+#stage .page-break::after { content: none; }
 
-        <div class="privacy-card">
-          <div class="privacy-icon">⚡</div>
-          <div class="privacy-info">
-            <h4>무설치 & 오프라인 작동</h4>
-            <p>Python, 백엔드 서버 등 추가 프로그램 설치가 일절 필요 없습니다. 인터넷 연결을 해제한 오프라인 환경에서도 100% 정상 작동합니다.</p>
-          </div>
-        </div>
+/* off-screen render stage for PDF */
+#stageWrap { position: absolute; left: -12000px; top: 0; background: #ffffff; overflow: hidden; }
+#stage { background: #ffffff; }
 
-        <div class="privacy-card">
-          <div class="privacy-icon">📑</div>
-          <div class="privacy-info">
-            <h4>표 및 서식 구조 보존</h4>
-            <p>KS X 6101 HWPX 표준 구조를 분석하여 본문 제목, 문단 서식, 글자 강조, 표(Table) 구조를 마크다운과 A4 규격 PDF로 완벽히 재현합니다.</p>
-          </div>
-        </div>
-      </div>
-    </section>
+/* ---------- status ---------- */
+.status { background: var(--panel); border-top: 1px solid var(--line); }
+.status-inner {
+  display: flex; flex-wrap: wrap; gap: 6px 18px; padding-block: 7px; font-family: var(--mono); font-size: 11.5px;
+  color: var(--muted); font-variant-numeric: tabular-nums;
+}
+.status-inner .saved { margin-left: auto; }
 
-    <!-- Progress Indicator Card (Hidden by default) -->
-    <div id="progressCard" class="progress-card no-print" style="display: none;">
-      <div class="spinner"></div>
-      <h3 class="progress-title">HWPX 문서 처리 중</h3>
-      <p id="progressMsg" class="progress-msg">파일을 분석하고 있습니다...</p>
+/* ---------- drop overlay, toast, dialog ---------- */
+.drop {
+  position: fixed; inset: 0; z-index: 30; display: grid; place-items: center;
+  background: rgba(43, 76, 126, .18); border: 3px dashed var(--accent); pointer-events: none;
+}
+.drop span { background: var(--panel); color: var(--ink); padding: 14px 22px; border-radius: 8px; font-weight: 700; box-shadow: var(--shadow); }
+.toast {
+  position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%);
+  z-index: 40; max-width: min(560px, calc(100% - 32px)); background: var(--ink); color: var(--panel);
+  padding: 10px 16px; border-radius: 8px; font-size: 13px; line-height: 1.5; box-shadow: var(--shadow);
+}
+.toast.err { background: var(--danger); color: #ffffff; }
+.modal { position: fixed; inset: 0; z-index: 50; background: rgba(10, 14, 22, .5); display: grid; place-items: center; padding: 16px; }
+.modal-box {
+  background: var(--panel); color: var(--ink); border-radius: 10px; width: min(720px, 100%); max-height: 86vh;
+  display: flex; flex-direction: column; gap: 10px; padding: 18px; box-shadow: var(--shadow);
+}
+.modal-box h3 { margin: 0; font-size: 15px; }
+.modal-box textarea {
+  width: 100%; min-height: 300px; flex: 1; resize: vertical; font-family: var(--mono); font-size: 12px;
+  background: var(--desk); color: var(--ink); border: 1px solid var(--line); border-radius: 6px; padding: 10px;
+}
+.modal-actions { display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
+
+@media (max-width: 860px) {
+  .work { grid-template-columns: minmax(0, 1fr); }
+  .rail { border-right: 0; border-bottom: 1px solid var(--line); padding-right: max(16px, env(safe-area-inset-right, 0px)); flex-direction: row; flex-wrap: wrap; gap: 18px 28px; }
+  .rail > section { flex: 1 1 220px; min-width: 0; }
+  .sheet { padding: max(18px, calc(var(--margin-px) * .5)); min-height: 60vh; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+
+<header class="bar">
+  <div class="bar-inner">
+    <div class="brand"><b>HWPX 편집 변환기</b><span class="fname" id="fname">예시 문서</span></div>
+    <div class="actions">
+      <label class="btn" for="fileInput" title="HWPX 파일 열기">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 4.5V13h12V6H8L6.5 4.5z"/></svg>HWPX 열기
+      </label>
+      <input type="file" id="fileInput" accept=".hwpx,.hwp" hidden>
+      <button class="btn" id="newBtn" type="button">새 문서</button>
+      <button class="btn" id="mdBtn" type="button">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 2v8m-3-3 3 3 3-3M3 13h10"/></svg>MD 저장
+      </button>
+      <button class="btn primary" id="pdfBtn" type="button">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 2v8m-3-3 3 3 3-3M3 13h10"/></svg>PDF 저장
+      </button>
     </div>
-
-    <!-- Main Workspace Section (Displayed after file load) -->
-    <main id="workspaceSection" class="workspace-section">
-      <!-- Toolbar -->
-      <div class="toolbar-bar no-print">
-        <div class="file-meta-chip">
-          <span class="file-badge-hwpx">HWPX</span>
-          <span id="fileNameDisplay" class="file-name-text">document.hwpx</span>
-          <div id="fileStatsDisplay" class="file-stats-summary">
-            <!-- Dynamic stats pills -->
-          </div>
-        </div>
-
-        <div class="toolbar-actions">
-          <button id="btnExportMd" class="btn-export btn-export-md" title="마크다운 파일 다운로드">
-            📥 마크다운 (.md) 저장
-          </button>
-          <button id="btnCopyMd" class="btn-export btn-copy" title="마크다운 내용 클립보드 복사">
-            📋 마크다운 복사
-          </button>
-          <button id="btnPrintPdf" class="btn-export btn-export-pdf-print" title="브라우저 인쇄 다이얼로그를 통해 선명한 벡터 PDF로 저장">
-            🖨️ PDF 인쇄 / 저장 (권장)
-          </button>
-          <button id="btnDownloadPdf" class="btn-export btn-export-pdf-dl" title="HTML2PDF를 통한 1클릭 PDF 다운로드">
-            ⚡ PDF 직접 다운로드
-          </button>
-          <button id="btnReset" class="btn-export btn-reload" title="새 파일 열기">
-            🔄 다른 파일 열기
-          </button>
-        </div>
-      </div>
-
-      <!-- View Mode Tabs -->
-      <div class="view-mode-bar no-print">
-        <div class="tab-nav">
-          <button id="tabDocView" class="tab-btn active">
-            📄 문서 양식 뷰 (A4 인쇄 미리보기)
-          </button>
-          <button id="tabMdView" class="tab-btn">
-            📝 마크다운 소스 편집기
-          </button>
-        </div>
-      </div>
-
-      <!-- Content Viewer Container -->
-      <div class="content-viewer">
-        <!-- 1. Document Page View (Paper Simulation) -->
-        <div id="docViewContainer" class="document-view-container">
-          <article id="documentPage" class="document-page" aria-label="문서 미리보기">
-            <!-- Rendered HTML from Markdown inserted here -->
-          </article>
-        </div>
-
-        <!-- 2. Markdown Source View -->
-        <div id="mdViewContainer" class="markdown-view-container">
-          <div class="editor-header">
-            <span>마크다운 원본 (수정 시 실시간으로 문서 양식 뷰에 반영됩니다)</span>
-            <span id="wordCountDisplay">글자 수: 0 | 줄 수: 0</span>
-          </div>
-          <textarea id="markdownTextarea" class="markdown-textarea" placeholder="마크다운 내용이 여기에 표시됩니다..." spellcheck="false"></textarea>
-        </div>
-      </div>
-    </main>
-
-    <!-- Footer -->
-    <footer class="app-footer no-print">
-      <p>DocuHWPX Studio • 한컴오피스 HWPX (KS X 6101) 순수 클라이언트 전용 변환기</p>
-      <p>모든 데이터는 사용자 브라우저의 RAM 메모리에서만 즉시 처리되며 외부로 저장되거나 전송되지 않습니다.</p>
-    </footer>
   </div>
+</header>
 
-  <!-- Toast Notification Container -->
-  <div id="toastContainer" class="toast-container no-print" aria-live="polite"></div>
+<nav class="ribbon" aria-label="서식 도구">
+  <div class="ribbon-inner" id="ribbon">
+    <div class="grp">
+      <button class="tb" data-cmd="undo" title="되돌리기 (Ctrl+Z)"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5 4 2 7l3 3"/><path d="M2 7h7.5a4 4 0 0 1 0 8H7"/></svg></button>
+      <button class="tb" data-cmd="redo" title="다시 실행 (Ctrl+Y)"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="m11 4 3 3-3 3"/><path d="M14 7H6.5a4 4 0 0 0 0 8H9"/></svg></button>
+    </div>
+    <div class="grp">
+      <select class="sel" id="blockSel" title="문단 종류" aria-label="문단 종류">
+        <option value="p">본문</option><option value="h1">제목 1</option><option value="h2">제목 2</option><option value="h3">제목 3</option><option value="blockquote">인용</option>
+      </select>
+    </div>
+    <div class="grp">
+      <select class="sel" id="selFont" title="선택 영역 글꼴" aria-label="선택 영역 글꼴">
+        <option value="">글꼴</option>
+      </select>
+      <input class="num" id="selSize" type="number" min="6" max="72" step="0.5" placeholder="pt" title="선택 영역 글자 크기 (pt)" aria-label="선택 영역 글자 크기">
+    </div>
+    <div class="grp">
+      <button class="tb" data-cmd="bold" title="굵게 (Ctrl+B)"><b>가</b></button>
+      <button class="tb" data-cmd="italic" title="기울임 (Ctrl+I)"><i style="font-family:serif">가</i></button>
+      <button class="tb" data-cmd="underline" title="밑줄 (Ctrl+U)"><u>가</u></button>
+      <button class="tb" data-cmd="strikeThrough" title="취소선"><s>가</s></button>
+      <input class="color" type="color" id="foreColor" value="#111111" title="글자 색" aria-label="글자 색">
+    </div>
+    <div class="grp">
+      <button class="tb" data-cmd="justifyLeft" title="왼쪽 정렬"><svg viewBox="0 0 16 16" stroke="currentColor" stroke-width="1.5"><path d="M2 3h12M2 6.5h8M2 10h12M2 13.5h8"/></svg></button>
+      <button class="tb" data-cmd="justifyCenter" title="가운데 정렬"><svg viewBox="0 0 16 16" stroke="currentColor" stroke-width="1.5"><path d="M2 3h12M4 6.5h8M2 10h12M4 13.5h8"/></svg></button>
+      <button class="tb" data-cmd="justifyRight" title="오른쪽 정렬"><svg viewBox="0 0 16 16" stroke="currentColor" stroke-width="1.5"><path d="M2 3h12M6 6.5h8M2 10h12M6 13.5h8"/></svg></button>
+      <button class="tb" data-cmd="justifyFull" title="양쪽 정렬"><svg viewBox="0 0 16 16" stroke="currentColor" stroke-width="1.5"><path d="M2 3h12M2 6.5h12M2 10h12M2 13.5h12"/></svg></button>
+    </div>
+    <div class="grp">
+      <button class="tb" data-cmd="insertUnorderedList" title="글머리 기호"><svg viewBox="0 0 16 16" stroke="currentColor" stroke-width="1.5" fill="none"><circle cx="3" cy="4" r="1" fill="currentColor"/><circle cx="3" cy="8" r="1" fill="currentColor"/><circle cx="3" cy="12" r="1" fill="currentColor"/><path d="M6 4h8M6 8h8M6 12h8"/></svg></button>
+      <button class="tb" data-cmd="insertOrderedList" title="번호 매기기"><svg viewBox="0 0 16 16" stroke="currentColor" stroke-width="1.5" fill="none"><path d="M6 4h8M6 8h8M6 12h8"/><text x="1" y="6" font-size="5" fill="currentColor" stroke="none">1</text><text x="1" y="10" font-size="5" fill="currentColor" stroke="none">2</text><text x="1" y="14" font-size="5" fill="currentColor" stroke="none">3</text></svg></button>
+      <button class="tb" data-cmd="pagebreak" title="쪽 나누기 (PDF에서 다음 쪽으로)"><svg viewBox="0 0 16 16" stroke="currentColor" stroke-width="1.5" fill="none"><path d="M3 2v4h10V2M3 14v-4h10v4"/><path d="M1 8h2m2 0h2m2 0h2m2 0h2" /></svg></button>
+      <button class="tb" data-cmd="removeFormat" title="서식 지우기"><svg viewBox="0 0 16 16" stroke="currentColor" stroke-width="1.5" fill="none"><path d="M3 3h9M7.5 3 5 13M10 9l4 4m0-4-4 4"/></svg></button>
+    </div>
+  </div>
+</nav>
 
-  <!-- Local Libraries (100% Offline Support with CDN Fallback) -->
-  <script src="jszip.min.js"></script>
-  <script>
-    if (typeof JSZip === 'undefined') {
-      document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"><\/script>');
+<main class="work">
+  <aside class="rail">
+    <section>
+      <h2>문서 서식</h2>
+      <div class="field"><label for="docFont">본문 글꼴</label><select class="sel" id="docFont"></select></div>
+      <div class="field"><label for="docSize">기본 크기</label><span><input class="num" id="docSize" type="number" min="7" max="24" step="0.5" value="11"><span class="unit">pt</span></span></div>
+      <div class="field"><label for="docLh">줄 간격</label><select class="sel" id="docLh">
+        <option value="1.3">130%</option><option value="1.5">150%</option><option value="1.6">160%</option><option value="1.7" selected>170%</option><option value="1.8">180%</option><option value="2">200%</option>
+      </select></div>
+      <div class="field"><label for="docGap">문단 간격</label><select class="sel" id="docGap">
+        <option value="0">없음</option><option value="0.3em">좁게</option><option value="0.6em" selected>보통</option><option value="1em">넓게</option>
+      </select></div>
+      <div class="field"><label for="docMargin">쪽 여백</label><span><input class="num" id="docMargin" type="number" min="10" max="35" step="1" value="20"><span class="unit">mm</span></span></div>
+    </section>
+    <section>
+      <h2>저장 옵션</h2>
+      <label class="check"><input type="checkbox" id="optPageNo" checked><span>PDF 아래쪽에 쪽 번호 넣기</span></label>
+      <label class="check"><input type="checkbox" id="optMdImg"><span>MD에 그림 포함 (base64, 파일이 커짐)</span></label>
+      <p class="note">PDF는 화면 그대로 쪽마다 이미지로 담깁니다. 글꼴이 깨지지 않는 대신 PDF 안의 글자는 선택·검색되지 않습니다.</p>
+    </section>
+    <section>
+      <div class="spec" id="spec">A4 210 × 297 mm</div>
+    </section>
+  </aside>
+
+  <section class="desk" id="desk">
+    <article class="sheet" id="sheet">
+      <span class="sample-tag" id="sampleTag">예시 문서</span>
+      <div class="doc" id="editor" contenteditable="true" spellcheck="false" aria-label="문서 편집 영역"></div>
+    </article>
+  </section>
+</main>
+
+<footer class="status">
+  <div class="status-inner">
+    <span id="stChars">글자 0</span>
+    <span id="stPages">A4 약 1쪽</span>
+    <span id="stInfo"></span>
+    <span class="saved" id="stSaved">임시 저장 안 됨</span>
+  </div>
+</footer>
+
+<div id="stageWrap" aria-hidden="true"><div id="stage" class="doc"></div></div>
+<div class="drop" id="drop" hidden><span>여기에 HWPX 파일을 놓으세요</span></div>
+<div class="toast" id="toast" hidden role="status"></div>
+<div class="modal" id="mdModal" hidden>
+  <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="mdTitle">
+    <h3 id="mdTitle">Markdown</h3>
+    <p class="note" id="mdNote">이 화면에서는 파일 저장을 쓸 수 없습니다. 아래 내용을 복사해 .md 파일로 붙여 넣으세요.</p>
+    <textarea id="mdText" readonly></textarea>
+    <div class="modal-actions">
+      <button class="btn" id="mdClose" type="button">닫기</button>
+      <button class="btn primary" id="mdCopy" type="button">복사</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<!-- ===== HWPX parser & Markdown converter (pure functions) ===== -->
+<script id="core">
+const HWPUNIT_PER_INCH = 7200;
+
+function kids(el, name) {
+  const out = [];
+  if (!el) return out;
+  for (const c of el.children) if (!name || c.localName === name) out.push(c);
+  return out;
+}
+function kid(el, name) { return kids(el, name)[0] || null; }
+function desc(el, name) { return el ? Array.from(el.getElementsByTagNameNS('*', name)) : []; }
+function parseXml(str) {
+  const doc = new DOMParser().parseFromString(str, 'application/xml');
+  if (doc.getElementsByTagName('parsererror').length) throw new Error('XML 해석 실패');
+  return doc;
+}
+function zipFile(zip, path) {
+  if (!path) return null;
+  const clean = path.replace(/^\.?\//, '');
+  return zip.file(clean) || zip.file('Contents/' + clean) ||
+    zip.file(new RegExp('(^|/)' + clean.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$', 'i'))[0] || null;
+}
+
+function readHeader(doc) {
+  const fonts = {};
+  for (const ff of desc(doc, 'fontface')) {
+    if ((ff.getAttribute('lang') || '').toUpperCase() !== 'HANGUL') continue;
+    for (const f of kids(ff, 'font')) fonts[f.getAttribute('id')] = f.getAttribute('face') || '';
+  }
+  const charPr = {};
+  for (const cp of desc(doc, 'charPr')) {
+    const ul = kid(cp, 'underline'), so = kid(cp, 'strikeout'), fr = kid(cp, 'fontRef');
+    charPr[cp.getAttribute('id')] = {
+      size: (parseInt(cp.getAttribute('height'), 10) || 1000) / 100,
+      color: (cp.getAttribute('textColor') || '#000000').toLowerCase(),
+      bold: !!kid(cp, 'bold'),
+      italic: !!kid(cp, 'italic'),
+      underline: !!ul && (ul.getAttribute('type') || 'NONE').toUpperCase() !== 'NONE',
+      strike: !!so && !['NONE', ''].includes((so.getAttribute('shape') || 'NONE').toUpperCase()),
+      sup: !!kid(cp, 'supscript'), sub: !!kid(cp, 'subscript'),
+      face: fr ? fonts[fr.getAttribute('hangul')] || '' : ''
+    };
+  }
+  const paraPr = {};
+  for (const pp of desc(doc, 'paraPr')) {
+    const al = desc(pp, 'align')[0];
+    paraPr[pp.getAttribute('id')] = { align: al ? (al.getAttribute('horizontal') || '').toUpperCase() : '' };
+  }
+  const styles = {};
+  for (const st of desc(doc, 'style')) {
+    styles[st.getAttribute('id')] = { name: st.getAttribute('name') || '', eng: st.getAttribute('engName') || '' };
+  }
+  return { fonts, charPr, paraPr, styles };
+}
+
+function headingLevel(style) {
+  if (!style) return 0;
+  const n = (style.name + ' ' + style.eng);
+  let m = n.match(/개요\s*(\d)/) || n.match(/Outline\s*(\d)/i) || n.match(/Heading\s*(\d)/i);
+  if (m) return Math.min(6, Math.max(1, parseInt(m[1], 10)));
+  if (/^(제목|Title)$/i.test(style.name.trim()) || /^Title$/i.test(style.eng.trim())) return 1;
+  return 0;
+}
+
+function convertHwpxDocs(sectionDocs, header, images, outDoc) {
+  const d = outDoc || document;
+  const ctx = { notes: [], figs: 0 };
+  // most common character size = base size
+  const tally = {};
+  for (const sd of sectionDocs) for (const r of desc(sd, 'run')) {
+    const len = desc(r, 't').reduce((a, t) => a + (t.textContent || '').length, 0);
+    const cp = header.charPr[r.getAttribute('charPrIDRef')];
+    if (cp && len) tally[cp.size] = (tally[cp.size] || 0) + len;
+  }
+  const baseSize = Number(Object.entries(tally).sort((a, b) => b[1] - a[1])[0]?.[0] || 10);
+
+  function textInto(target, tEl) {
+    for (const n of tEl.childNodes) {
+      if (n.nodeType === 3) { target.appendChild(d.createTextNode(n.nodeValue)); continue; }
+      if (n.nodeType !== 1) continue;
+      switch (n.localName) {
+        case 'lineBreak': target.appendChild(d.createElement('br')); break;
+        case 'tab': target.appendChild(d.createTextNode('    ')); break;
+        case 'nbSpace': case 'fwSpace': target.appendChild(d.createTextNode(' ')); break;
+        case 'hyphen': target.appendChild(d.createTextNode('-')); break;
+        default: if (n.textContent) target.appendChild(d.createTextNode(n.textContent));
+      }
     }
-  </script>
-
-  <script src="marked.min.js"></script>
-  <script>
-    if (typeof marked === 'undefined') {
-      document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"><\/script>');
+  }
+  function styledHolder(cp, inHeading) {
+    // returns [outer, inner]
+    if (!cp) { const s = d.createElement('span'); return [s, s]; }
+    let outer = null, inner = null;
+    const wrap = tag => { const e = d.createElement(tag); if (inner) inner.appendChild(e); else outer = e; inner = e; };
+    const css = [];
+    if (!inHeading && Math.abs(cp.size - baseSize) >= 0.5) css.push('font-size:' + cp.size + 'pt');
+    if (cp.color && cp.color !== '#000000' && /^#[0-9a-f]{6}$/.test(cp.color)) css.push('color:' + cp.color);
+    if (css.length) { wrap('span'); inner.setAttribute('style', css.join(';')); }
+    if (cp.bold && !inHeading) wrap('strong');
+    if (cp.italic) wrap('em');
+    if (cp.underline) wrap('u');
+    if (cp.strike) wrap('s');
+    if (cp.sup) wrap('sup'); else if (cp.sub) wrap('sub');
+    if (!outer) { outer = d.createElement('span'); inner = outer; }
+    return [outer, inner];
+  }
+  function picEl(pic) {
+    const img = desc(pic, 'img')[0];
+    const ref = img && img.getAttribute('binaryItemIDRef');
+    const src = ref && images[ref];
+    if (!src) return null;
+    const el = d.createElement('img');
+    el.src = src; ctx.figs++; el.alt = '그림 ' + ctx.figs;
+    const sz = kid(pic, 'sz') || desc(pic, 'curSz')[0];
+    const w = sz && parseInt(sz.getAttribute('width'), 10);
+    if (w > 0) el.setAttribute('width', String(Math.round(w / HWPUNIT_PER_INCH * 96)));
+    return el;
+  }
+  function tableEl(tbl) {
+    const table = d.createElement('table');
+    const tbody = d.createElement('tbody'); table.appendChild(tbody);
+    for (const tr of kids(tbl, 'tr')) {
+      const row = d.createElement('tr');
+      for (const tc of kids(tr, 'tc')) {
+        const cell = d.createElement(tc.getAttribute('header') === '1' ? 'th' : 'td');
+        const span = kid(tc, 'cellSpan');
+        if (span) {
+          const cs = parseInt(span.getAttribute('colSpan'), 10), rs = parseInt(span.getAttribute('rowSpan'), 10);
+          if (cs > 1) cell.colSpan = cs;
+          if (rs > 1) cell.rowSpan = rs;
+        }
+        const sub = kid(tc, 'subList');
+        const blocks = sub ? paragraphs(kids(sub, 'p')) : [];
+        trimEmpty(blocks);
+        for (const b of blocks) cell.appendChild(b);
+        row.appendChild(cell);
+      }
+      tbody.appendChild(row);
     }
-  </script>
-
-  <script src="html2pdf.bundle.min.js"></script>
-  <script>
-    if (typeof html2pdf === 'undefined') {
-      document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"><\/script>');
+    return table;
+  }
+  function trimEmpty(blocks) {
+    const empty = b => b.tagName === 'P' && !b.textContent.trim() && !b.querySelector('img,table');
+    while (blocks.length && empty(blocks[0])) blocks.shift();
+    while (blocks.length && empty(blocks[blocks.length - 1])) blocks.pop();
+  }
+  function paragraphs(ps) {
+    const out = [];
+    for (const p of ps) out.push(...paragraph(p));
+    return out;
+  }
+  function paragraph(p) {
+    const style = header.styles[p.getAttribute('styleIDRef')];
+    const para = header.paraPr[p.getAttribute('paraPrIDRef')] || {};
+    const level = headingLevel(style);
+    const blocks = [];
+    const make = () => {
+      const b = d.createElement(level ? 'h' + level : 'p');
+      if (para.align === 'CENTER') b.style.textAlign = 'center';
+      else if (para.align === 'RIGHT') b.style.textAlign = 'right';
+      return b;
+    };
+    let cur = make(), produced = false;
+    const flush = (force) => {
+      if (cur.childNodes.length || force) { if (!cur.childNodes.length) cur.appendChild(d.createElement('br')); blocks.push(cur); }
+      cur = make();
+    };
+    for (const run of kids(p, 'run')) {
+      const cp = header.charPr[run.getAttribute('charPrIDRef')];
+      for (const c of run.children) {
+        switch (c.localName) {
+          case 't': {
+            if (!c.childNodes.length) break;
+            const [outer, inner] = styledHolder(cp, !!level);
+            textInto(inner, c);
+            if (outer.textContent.length || outer.querySelector('br')) cur.appendChild(outer.tagName === 'SPAN' && !outer.getAttribute('style') ? unwrap(outer) : outer);
+            break;
+          }
+          case 'tbl': flush(false); blocks.push(tableEl(c)); produced = true; break;
+          case 'pic': {
+            const img = picEl(c);
+            if (img) { flush(false); const f = d.createElement('p'); f.className = 'fig'; f.appendChild(img); blocks.push(f); produced = true; }
+            break;
+          }
+          case 'equation': {
+            const s = desc(c, 'script')[0];
+            if (s && s.textContent.trim()) { const code = d.createElement('code'); code.textContent = s.textContent.trim(); cur.appendChild(code); }
+            break;
+          }
+          case 'ctrl': {
+            for (const n of c.children) {
+              if (n.localName === 'footNote' || n.localName === 'endNote') {
+                const txt = desc(n, 'p').map(pp => desc(pp, 't').map(t => t.textContent).join('')).join(' ').trim();
+                if (txt) {
+                  ctx.notes.push(txt);
+                  const sup = d.createElement('sup'); sup.className = 'fn'; sup.textContent = '[' + ctx.notes.length + ']';
+                  cur.appendChild(sup);
+                }
+              }
+            }
+            break;
+          }
+          default: {
+            // drawing objects / text boxes carry their own paragraph lists
+            // keep only the outermost subLists (nested ones are reached through their own tables)
+            const lists = desc(c, 'subList').filter(sl => {
+              for (let a = sl.parentElement; a && a !== c; a = a.parentElement) if (a.localName === 'subList' || a.localName === 'tbl') return false;
+              return true;
+            });
+            if (lists.length && c.localName !== 'secPr') {
+              flush(false);
+              for (const sl of lists) blocks.push(...paragraphs(kids(sl, 'p')));
+              produced = true;
+            }
+          }
+        }
+      }
     }
-  </script>
+    flush(!produced && !blocks.length);
+    return blocks;
+  }
+  function unwrap(span) {
+    const frag = d.createDocumentFragment();
+    while (span.firstChild) frag.appendChild(span.firstChild);
+    return frag;
+  }
 
-  <!-- Application Logic -->
-  <script src="hwpx-parser.js"></script>
-  <script src="sample-generator.js"></script>
-  <script src="app.js"></script>
-</body>
-</html>
+  const root = d.createElement('div');
+  for (const sd of sectionDocs) {
+    const sec = sd.documentElement;
+    const blocks = paragraphs(kids(sec, 'p'));
+    for (const b of blocks) root.appendChild(b);
+  }
+  // drop leading/trailing empty paragraphs, collapse runs of 3+ empty paragraphs
+  const blocks = Array.from(root.children);
+  trimEmpty(blocks);
+  root.innerHTML = '';
+  let emptyRun = 0;
+  for (const b of blocks) {
+    const isEmpty = b.tagName === 'P' && !b.textContent.trim() && !b.querySelector('img,table');
+    emptyRun = isEmpty ? emptyRun + 1 : 0;
+    if (emptyRun <= 1) root.appendChild(b);
+  }
+  if (ctx.notes.length) {
+    const h = d.createElement('h3'); h.textContent = '각주'; root.appendChild(h);
+    const ol = d.createElement('ol'); ol.className = 'notes';
+    for (const n of ctx.notes) { const li = d.createElement('li'); li.textContent = n; ol.appendChild(li); }
+    root.appendChild(ol);
+  }
+  return { root, baseSize, figures: ctx.figs, notes: ctx.notes.length };
+}
+
+async function parseHwpx(buffer, outDoc) {
+  const zip = await JSZip.loadAsync(buffer);
+  let sectionPaths = [];
+  const binMap = {};
+  const hpf = zipFile(zip, 'Contents/content.hpf') || zip.file(/content\.hpf$/i)[0];
+  if (hpf) {
+    const doc = parseXml(await hpf.async('string'));
+    const items = {};
+    for (const it of desc(doc, 'item')) {
+      const id = it.getAttribute('id'), href = it.getAttribute('href') || '';
+      items[id] = href;
+      if (/^BinData\//i.test(href) || /image|bmp|gif|png|jpe?g/i.test(it.getAttribute('media-type') || '')) binMap[id] = href;
+    }
+    for (const ref of desc(doc, 'itemref')) {
+      const href = items[ref.getAttribute('idref')];
+      if (href && /section\d+\.xml$/i.test(href)) sectionPaths.push(href);
+    }
+    if (!sectionPaths.length) sectionPaths = Object.values(items).filter(h => /section\d+\.xml$/i.test(h));
+  }
+  if (!sectionPaths.length) {
+    sectionPaths = Object.keys(zip.files).filter(p => /Contents\/section\d+\.xml$/i.test(p))
+      .sort((a, b) => parseInt(a.match(/(\d+)\.xml$/i)[1], 10) - parseInt(b.match(/(\d+)\.xml$/i)[1], 10));
+  }
+  if (!sectionPaths.length) throw new Error('본문(section) 파일을 찾지 못했습니다. HWPX 파일이 맞는지 확인해 주세요.');
+
+  const headerFile = zipFile(zip, 'Contents/header.xml');
+  const header = headerFile ? readHeader(parseXml(await headerFile.async('string'))) : { fonts: {}, charPr: {}, paraPr: {}, styles: {} };
+
+  const sectionDocs = [];
+  for (const p of sectionPaths) {
+    const f = zipFile(zip, p);
+    if (f) sectionDocs.push(parseXml(await f.async('string')));
+  }
+
+  // images referenced by binaryItemIDRef
+  const images = {};
+  const refs = new Set();
+  for (const sd of sectionDocs) for (const im of desc(sd, 'img')) { const r = im.getAttribute('binaryItemIDRef'); if (r) refs.add(r); }
+  for (const r of refs) {
+    let f = zipFile(zip, binMap[r]);
+    if (!f) f = zip.file(new RegExp('BinData/' + r.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\.[a-z0-9]+$', 'i'))[0];
+    if (!f) continue;
+    const ext = (f.name.split('.').pop() || 'png').toLowerCase();
+    const mime = { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', gif: 'image/gif', bmp: 'image/bmp', svg: 'image/svg+xml', webp: 'image/webp' }[ext];
+    if (!mime) continue; // wmf/emf cannot be shown in a browser
+    images[r] = 'data:' + mime + ';base64,' + await f.async('base64');
+  }
+  const res = convertHwpxDocs(sectionDocs, header, images, outDoc);
+  res.skippedImages = refs.size - Object.keys(images).length;
+  return res;
+}
+
+/* ---------- HTML → Markdown ---------- */
+function htmlToMarkdown(root, opts = {}) {
+  let fig = 0;
+  const esc = s => s.replace(/\\/g, '\\\\').replace(/([`*_~])/g, '\\$1').replace(/ /g, ' ');
+  function inline(node, inTable) {
+    let out = '';
+    for (const n of node.childNodes) {
+      if (n.nodeType === 3) { out += esc(n.nodeValue.replace(/[\r\n]+/g, ' ')); continue; }
+      if (n.nodeType !== 1) continue;
+      const tag = n.tagName;
+      if (tag === 'BR') { out += inTable ? '<br>' : '  \n'; continue; }
+      if (tag === 'IMG') { out += image(n); continue; }
+      if (/^(UL|OL|TABLE|P|DIV|H[1-6]|BLOCKQUOTE)$/.test(tag)) { const t = inline(n, inTable).trim(); if (t) out += (out ? (inTable ? '<br>' : ' ') : '') + t; continue; }
+      const inner = inline(n, inTable);
+      const wrapMark = (m) => {
+        const t = inner.trim(); if (!t) return inner;
+        const lead = inner.match(/^\s*/)[0], trail = inner.match(/\s*$/)[0];
+        return lead + m + t + m + trail;
+      };
+      switch (tag) {
+        case 'STRONG': case 'B': out += wrapMark('**'); break;
+        case 'EM': case 'I': out += wrapMark('*'); break;
+        case 'S': case 'STRIKE': case 'DEL': out += wrapMark('~~'); break;
+        case 'CODE': out += '`' + n.textContent.replace(/`/g, "'") + '`'; break;
+        case 'A': out += n.getAttribute('href') ? '[' + inner + '](' + n.getAttribute('href') + ')' : inner; break;
+        case 'SUP': out += n.classList.contains('fn') ? inner.replace(/\\/g, '') : '<sup>' + inner + '</sup>'; break;
+        case 'SUB': out += '<sub>' + inner + '</sub>'; break;
+        default: out += inner;
+      }
+    }
+    return out;
+  }
+  function image(img) {
+    fig++;
+    const alt = (img.getAttribute('alt') || ('그림 ' + fig)).replace(/[\[\]]/g, '');
+    if (opts.embedImages && /^data:/.test(img.getAttribute('src') || '')) return '![' + alt + '](' + img.getAttribute('src') + ')';
+    return '*[' + alt + ']*';
+  }
+  function list(el, depth) {
+    const lines = [];
+    let i = parseInt(el.getAttribute('start') || '1', 10);
+    for (const li of el.children) {
+      if (li.tagName !== 'LI') continue;
+      const pad = '   '.repeat(depth);
+      const mark = el.tagName === 'OL' ? (i++) + '. ' : '- ';
+      const own = document.createElement('div');
+      const nested = [];
+      for (const c of li.childNodes) {
+        if (c.nodeType === 1 && (c.tagName === 'UL' || c.tagName === 'OL')) nested.push(c);
+        else own.appendChild(c.cloneNode(true));
+      }
+      lines.push(pad + mark + inline(own).trim().replace(/  \n/g, '  \n' + pad + '   '));
+      for (const n of nested) lines.push(list(n, depth + 1));
+    }
+    return lines.join('\n');
+  }
+  function table(t) {
+    const grid = [];
+    const rows = Array.from(t.querySelectorAll(':scope > tbody > tr, :scope > thead > tr, :scope > tr'));
+    rows.forEach((tr, r) => {
+      grid[r] = grid[r] || [];
+      let c = 0;
+      for (const cell of tr.children) {
+        while (grid[r][c] !== undefined) c++;
+        const txt = inline(cell, true).trim().replace(/\|/g, '\\|').replace(/\n+/g, '<br>');
+        const cs = cell.colSpan || 1, rs = cell.rowSpan || 1;
+        for (let i = 0; i < rs; i++) for (let j = 0; j < cs; j++) {
+          grid[r + i] = grid[r + i] || [];
+          grid[r + i][c + j] = (i === 0 && j === 0) ? txt : '';
+        }
+        c += cs;
+      }
+    });
+    const n = Math.max(1, ...grid.map(g => g.length));
+    const line = row => '| ' + Array.from({ length: n }, (_, i) => row[i] || '').join(' | ') + ' |';
+    const out = [line(grid[0] || []), '| ' + Array(n).fill('---').join(' | ') + ' |'];
+    for (let r = 1; r < grid.length; r++) out.push(line(grid[r] || []));
+    return out.join('\n');
+  }
+  function block(n) {
+    if (n.nodeType === 3) return n.nodeValue.trim() ? esc(n.nodeValue.trim()) : '';
+    if (n.nodeType !== 1) return '';
+    const tag = n.tagName;
+    if (n.classList.contains('page-break')) return '';
+    if (/^H[1-6]$/.test(tag)) { const t = inline(n).replace(/  \n/g, ' ').trim(); return t ? '#'.repeat(+tag[1]) + ' ' + t : ''; }
+    if (tag === 'UL' || tag === 'OL') return list(n, 0);
+    if (tag === 'TABLE') return table(n);
+    if (tag === 'HR') return '---';
+    if (tag === 'PRE') return '```\n' + n.textContent.replace(/\n$/, '') + '\n```';
+    if (tag === 'BLOCKQUOTE') {
+      const inner = Array.from(n.childNodes).map(block).filter(Boolean).join('\n\n') || inline(n).trim();
+      return inner.split('\n').map(l => '> ' + l).join('\n');
+    }
+    if (tag === 'DIV' && n.querySelector('p,h1,h2,h3,h4,h5,h6,ul,ol,table,blockquote')) return Array.from(n.childNodes).map(block).filter(Boolean).join('\n\n');
+    let t = inline(n).replace(/[ \t]+$/gm, m => m.length >= 2 ? m : '').trim();
+    if (/^(#{1,6}\s|[-+]\s|\d+\.\s|>)/.test(t)) t = '\\' + t;
+    return t;
+  }
+  return Array.from(root.childNodes).map(block).filter(s => s && s.trim()).join('\n\n').replace(/\n{3,}/g, '\n\n') + '\n';
+}
+
+/* ---------- page breaks for PDF ---------- */
+function computePages(stage, pageH) {
+  const top = stage.getBoundingClientRect().top;
+  const total = Math.ceil(stage.scrollHeight);
+  const iv = [];
+  const walker = document.createTreeWalker(stage, NodeFilter.SHOW_TEXT);
+  const range = document.createRange();
+  while (walker.nextNode()) {
+    const t = walker.currentNode;
+    if (!t.nodeValue.trim()) continue;
+    range.selectNodeContents(t);
+    for (const r of range.getClientRects()) if (r.height > 0) iv.push([r.top - top, r.bottom - top]);
+  }
+  for (const img of stage.querySelectorAll('img')) { const r = img.getBoundingClientRect(); if (r.height) iv.push([r.top - top, r.bottom - top]); }
+  iv.sort((a, b) => a[0] - b[0]);
+  const merged = [];
+  for (const [a, b] of iv) {
+    const last = merged[merged.length - 1];
+    if (last && a < last[1] - 0.5) last[1] = Math.max(last[1], b); else merged.push([a, b]);
+  }
+  const forced = Array.from(stage.querySelectorAll('.page-break')).map(e => e.getBoundingClientRect().top - top).sort((a, b) => a - b);
+  const pages = [];
+  let start = 0, guard = 0;
+  while (start < total - 1 && guard++ < 2000) {
+    const limit = start + pageH;
+    const f = forced.find(y => y > start + 1 && y <= limit);
+    if (f !== undefined) { pages.push([start, f]); start = f; continue; }
+    if (limit >= total) { pages.push([start, total]); break; }
+    let best = -1;
+    for (let i = 0; i < merged.length; i++) {
+      const gapStart = merged[i][1];
+      const gapEnd = i + 1 < merged.length ? merged[i + 1][0] : total;
+      if (gapStart > limit) break;
+      if (gapEnd > start) best = Math.max(best, Math.min(gapEnd - 1, limit));
+    }
+    // a gap before the first line also counts
+    if (merged.length && merged[0][0] > start && merged[0][0] <= limit) best = Math.max(best, merged[0][0] - 1);
+    const end = best > start + pageH * 0.25 ? best : limit;
+    pages.push([start, end]);
+    start = end;
+  }
+  if (!pages.length) pages.push([0, Math.max(total, 1)]);
+  return pages;
+}
+</script>
+
+<!-- ===== app ===== -->
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const editor = $('editor'), stage = $('stage'), stageWrap = $('stageWrap');
+  const FONTS = [
+    { label: '명조 · Noto Serif KR', css: '"Noto Serif KR", "Nanum Myeongjo", serif', name: 'Noto Serif KR' },
+    { label: '고딕 · Noto Sans KR', css: '"Noto Sans KR", "Nanum Gothic", sans-serif', name: 'Noto Sans KR' },
+    { label: '나눔명조', css: '"Nanum Myeongjo", "Noto Serif KR", serif', name: 'Nanum Myeongjo' },
+    { label: '나눔고딕', css: '"Nanum Gothic", "Noto Sans KR", sans-serif', name: 'Nanum Gothic' },
+    { label: '고운바탕', css: '"Gowun Batang", "Noto Serif KR", serif', name: 'Gowun Batang' },
+    { label: 'IBM Plex Sans KR', css: '"IBM Plex Sans KR", "Noto Sans KR", sans-serif', name: 'IBM Plex Sans KR' }
+  ];
+  const MM = 96 / 25.4;
+  const state = { name: '예시 문서', isSample: true, font: 0, size: 11, lh: '1.7', gap: '0.6em', margin: 20 };
+  const DRAFT_KEY = 'hwpx-editor-draft-v1';
+
+  // ---------- font selects ----------
+  for (const [i, f] of FONTS.entries()) {
+    $('docFont').add(new Option(f.label, String(i)));
+    $('selFont').add(new Option(f.label.replace(/^.+ · /, ''), String(i)));
+  }
+
+  // ---------- sample (clearly marked) ----------
+  const SAMPLE = `
+<h1>신제품 개발(NPD) 1차 검토 회의록</h1>
+<p style="text-align:right">작성일 2026. 10. 19. · 작성자 품질기획팀</p>
+<h2>1. 회의 개요</h2>
+<p>본 문서는 <strong>HWPX 편집 변환기의 예시 문서</strong>입니다. 실제 회의 내용이 아니며, 화면 위 <em>HWPX 열기</em> 버튼으로 한글 문서를 불러오면 이 내용이 바뀝니다.</p>
+<ul><li>일시: 2026년 10월 15일(목) 14:00–15:30</li><li>장소: 본사 3층 회의실</li><li>안건: 저당 발효음료 시제품 관능평가 결과 검토</li></ul>
+<h2>2. 관능평가 결과 요약</h2>
+<table><tbody>
+<tr><th>시료</th><th>당 함량(g/100 mL)</th><th>전반적 기호도(9점)</th><th>비고</th></tr>
+<tr><td>A안</td><td>4.2</td><td>6.8</td><td rowspan="2">대조군 대비 산미 강함</td></tr>
+<tr><td>B안</td><td>3.1</td><td>6.1</td></tr>
+<tr><td>대조군</td><td>9.5</td><td>7.2</td><td>시판 제품</td></tr>
+</tbody></table>
+<h2>3. 결정 사항</h2>
+<ol><li>A안을 기준으로 산도 조정 시제품을 2종 추가 제작한다.</li><li>2차 관능평가는 패널 30명 이상으로 확대한다.</li></ol>
+<p>위 표의 수치는 화면 시연을 위한 <u>가상의 값</u>입니다.</p>`;
+
+  // ---------- settings ----------
+  function applySettings() {
+    const r = document.documentElement.style;
+    r.setProperty('--doc-font', FONTS[state.font].css);
+    r.setProperty('--doc-size', state.size + 'pt');
+    r.setProperty('--doc-lh', state.lh);
+    r.setProperty('--doc-gap', state.gap);
+    r.setProperty('--margin-px', (state.margin * MM).toFixed(2) + 'px');
+    r.setProperty('--content-w', ((210 - 2 * state.margin) * MM).toFixed(2) + 'px');
+    $('docFont').value = String(state.font); $('docSize').value = state.size; $('docLh').value = state.lh;
+    $('docGap').value = state.gap; $('docMargin').value = state.margin;
+    $('spec').innerHTML = `A4 210 × 297 mm<br>본문 영역 ${210 - 2 * state.margin} × ${297 - 2 * state.margin} mm<br>${state.size} pt · 줄 간격 ${Math.round(parseFloat(state.lh) * 100)}%`;
+    schedule();
+  }
+  $('docFont').addEventListener('change', e => { state.font = +e.target.value; applySettings(); });
+  $('docSize').addEventListener('change', e => { const v = parseFloat(e.target.value); if (v >= 7 && v <= 24) state.size = v; applySettings(); });
+  $('docLh').addEventListener('change', e => { state.lh = e.target.value; applySettings(); });
+  $('docGap').addEventListener('change', e => { state.gap = e.target.value; applySettings(); });
+  $('docMargin').addEventListener('change', e => { const v = parseInt(e.target.value, 10); if (v >= 10 && v <= 35) state.margin = v; applySettings(); });
+
+  // ---------- toast ----------
+  let toastT;
+  function toast(msg, err) {
+    const t = $('toast'); t.textContent = msg; t.className = 'toast' + (err ? ' err' : ''); t.hidden = false;
+    clearTimeout(toastT); toastT = setTimeout(() => { t.hidden = true; }, err ? 7000 : 3200);
+  }
+
+  // ---------- selection keeping ----------
+  let savedRange = null;
+  document.addEventListener('selectionchange', () => {
+    const s = window.getSelection();
+    if (s.rangeCount && editor.contains(s.getRangeAt(0).commonAncestorContainer)) { savedRange = s.getRangeAt(0).cloneRange(); syncRibbon(); }
+  });
+  function restoreSel() {
+    editor.focus();
+    if (savedRange) { const s = window.getSelection(); s.removeAllRanges(); s.addRange(savedRange); }
+  }
+  function syncRibbon() {
+    for (const b of document.querySelectorAll('.tb[data-cmd]')) {
+      const c = b.dataset.cmd;
+      if (['bold', 'italic', 'underline', 'strikeThrough', 'justifyLeft', 'justifyCenter', 'justifyRight', 'justifyFull', 'insertUnorderedList', 'insertOrderedList'].includes(c)) {
+        let on = false; try { on = document.queryCommandState(c); } catch (e) {}
+        b.classList.toggle('on', on);
+      }
+    }
+    let blk = ''; try { blk = (document.queryCommandValue('formatBlock') || '').toLowerCase(); } catch (e) {}
+    $('blockSel').value = ['h1', 'h2', 'h3', 'blockquote'].includes(blk) ? blk : 'p';
+  }
+
+  // ---------- ribbon commands ----------
+  $('ribbon').addEventListener('mousedown', e => { if (e.target.closest('.tb')) e.preventDefault(); });
+  $('ribbon').addEventListener('click', e => {
+    const b = e.target.closest('.tb'); if (!b) return;
+    const c = b.dataset.cmd;
+    restoreSel();
+    if (c === 'pagebreak') {
+      document.execCommand('insertHTML', false, '<div class="page-break" contenteditable="false"></div><p><br></p>');
+    } else {
+      document.execCommand(c, false, null);
+    }
+    changed(); syncRibbon();
+  });
+  $('blockSel').addEventListener('change', e => { restoreSel(); document.execCommand('formatBlock', false, e.target.value); changed(); });
+  function replaceFontTags(apply) {
+    for (const f of editor.querySelectorAll('font')) {
+      const span = document.createElement('span');
+      apply(span, f);
+      if (f.getAttribute('color')) span.style.color = f.getAttribute('color');
+      while (f.firstChild) span.appendChild(f.firstChild);
+      f.replaceWith(span);
+    }
+  }
+  $('selFont').addEventListener('change', e => {
+    const i = e.target.value; if (i === '') return;
+    restoreSel();
+    document.execCommand('styleWithCSS', false, false);
+    document.execCommand('fontName', false, '__pick__');
+    replaceFontTags((span, f) => { if (f.getAttribute('face') === '__pick__') span.style.fontFamily = FONTS[+i].css; else if (f.getAttribute('face')) span.style.fontFamily = f.getAttribute('face'); });
+    e.target.value = ''; changed();
+  });
+  $('selSize').addEventListener('change', e => {
+    const v = parseFloat(e.target.value); if (!(v >= 6 && v <= 72)) return;
+    restoreSel();
+    document.execCommand('styleWithCSS', false, false);
+    document.execCommand('fontSize', false, '7');
+    replaceFontTags((span, f) => { if (f.getAttribute('size') === '7') span.style.fontSize = v + 'pt'; if (f.getAttribute('face')) span.style.fontFamily = f.getAttribute('face'); });
+    changed();
+  });
+  $('foreColor').addEventListener('input', e => {
+    restoreSel(); document.execCommand('styleWithCSS', false, true); document.execCommand('foreColor', false, e.target.value); changed();
+  });
+  editor.addEventListener('keydown', e => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); document.execCommand('insertHTML', false, '<div class="page-break" contenteditable="false"></div><p><br></p>'); changed(); }
+  });
+  editor.addEventListener('input', changed);
+
+  // ---------- status & draft ----------
+  let schedT;
+  function schedule() { clearTimeout(schedT); schedT = setTimeout(updateStatus, 600); }
+  function changed() {
+    if (state.isSample) { state.isSample = false; $('sampleTag').hidden = true; }
+    schedule();
+  }
+  function prepareStage() {
+    stage.innerHTML = editor.innerHTML;
+    stageWrap.style.width = stage.style.width = ((210 - 2 * state.margin) * MM).toFixed(2) + 'px';
+    stageWrap.style.height = 'auto';
+    stage.style.marginTop = '0px';
+  }
+  function updateStatus() {
+    const text = editor.innerText.replace(/\s+/g, '');
+    $('stChars').textContent = '글자 ' + text.length.toLocaleString('ko-KR');
+    try {
+      prepareStage();
+      const pages = computePages(stage, (297 - 2 * state.margin) * MM);
+      $('stPages').textContent = 'A4 약 ' + pages.length + '쪽';
+    } catch (e) { $('stPages').textContent = 'A4 쪽수 계산 불가'; }
+    stage.innerHTML = '';
+    saveDraft();
+  }
+  function saveDraft() {
+    if (state.isSample) return;
+    try {
+      const html = editor.innerHTML;
+      if (html.length > 4_500_000) { $('stSaved').textContent = '용량이 커서 임시 저장 생략'; return; }
+      localStorage.setItem(DRAFT_KEY, JSON.stringify({ html, state: { ...state, isSample: false }, at: Date.now() }));
+      const t = new Date(); $('stSaved').textContent = '이 브라우저에 임시 저장 ' + String(t.getHours()).padStart(2, '0') + ':' + String(t.getMinutes()).padStart(2, '0');
+    } catch (e) { $('stSaved').textContent = '임시 저장 불가'; }
+  }
+  function loadDraft() {
+    try {
+      const raw = localStorage.getItem(DRAFT_KEY); if (!raw) return false;
+      const d = JSON.parse(raw); if (!d || !d.html) return false;
+      editor.innerHTML = d.html; Object.assign(state, d.state || {}, { isSample: false });
+      if (!(state.font >= 0 && state.font < FONTS.length)) state.font = 0;
+      $('sampleTag').hidden = true; $('fname').textContent = state.name;
+      $('stSaved').textContent = '이전 작업을 불러왔습니다';
+      return true;
+    } catch (e) { return false; }
+  }
+
+  // ---------- open files ----------
+  async function openFile(file) {
+    if (!file) return;
+    const lower = file.name.toLowerCase();
+    if (lower.endsWith('.hwp')) { toast('HWP(5.0 이진) 형식은 열 수 없습니다. 한글에서 "다른 이름으로 저장 → HWPX"로 저장한 뒤 열어 주세요.', true); return; }
+    if (!lower.endsWith('.hwpx')) { toast('.hwpx 파일만 열 수 있습니다.', true); return; }
+    try {
+      $('stInfo').textContent = '여는 중…';
+      const res = await parseHwpx(await file.arrayBuffer());
+      editor.innerHTML = '';
+      while (res.root.firstChild) editor.appendChild(res.root.firstChild);
+      if (!editor.innerHTML.trim()) editor.innerHTML = '<p><br></p>';
+      state.name = file.name.replace(/\.hwpx$/i, '');
+      state.isSample = false; $('sampleTag').hidden = true;
+      if (res.baseSize >= 7 && res.baseSize <= 24) state.size = res.baseSize;
+      $('fname').textContent = file.name;
+      const bits = [];
+      if (res.figures) bits.push('그림 ' + res.figures);
+      if (res.notes) bits.push('각주 ' + res.notes);
+      if (res.skippedImages) bits.push('표시 못한 그림 ' + res.skippedImages + '(WMF/EMF 등)');
+      $('stInfo').textContent = bits.join(' · ');
+      applySettings();
+      $('desk').scrollTop = 0;
+      toast(file.name + ' 을(를) 열었습니다.');
+    } catch (e) {
+      $('stInfo').textContent = '';
+      toast('파일을 읽지 못했습니다. 암호가 걸렸거나 손상된 HWPX일 수 있습니다. (' + (e.message || e) + ')', true);
+    }
+  }
+  $('fileInput').addEventListener('change', e => { openFile(e.target.files[0]); e.target.value = ''; });
+  let dragDepth = 0;
+  window.addEventListener('dragenter', e => { if ([...e.dataTransfer.types].includes('Files')) { dragDepth++; $('drop').hidden = false; } });
+  window.addEventListener('dragleave', () => { dragDepth = Math.max(0, dragDepth - 1); if (!dragDepth) $('drop').hidden = true; });
+  window.addEventListener('dragover', e => e.preventDefault());
+  window.addEventListener('drop', e => { e.preventDefault(); dragDepth = 0; $('drop').hidden = true; openFile(e.dataTransfer.files[0]); });
+
+  $('newBtn').addEventListener('click', () => {
+    editor.innerHTML = '<h1><br></h1><p><br></p>';
+    state.name = '새 문서'; state.isSample = false; $('sampleTag').hidden = true; $('fname').textContent = '새 문서'; $('stInfo').textContent = '';
+    editor.focus(); schedule();
+  });
+
+  // ---------- downloads ----------
+  let dl = null;
+  if (window.claude && window.claude.use) window.claude.use('downloads').then(ns => { dl = ns; }).catch(() => {});
+  const safeName = s => (s || '문서').replace(/[\\/:*?"<>|]+/g, '_').trim() || '문서';
+
+  async function save(filename, data) {
+    if (!dl) return 'unavailable';
+    try { await dl.save({ filename, data }); return 'saved'; }
+    catch (e) { return (e && e.code) || 'unavailable'; }
+  }
+
+  $('mdBtn').addEventListener('click', async () => {
+    const md = htmlToMarkdown(editor, { embedImages: $('optMdImg').checked });
+    const r = await save(safeName(state.name) + '.md', md);
+    if (r === 'saved') toast('Markdown 파일을 저장했습니다.');
+    else if (r === 'declined') toast('저장을 취소했습니다.');
+    else if (r === 'rate_limited') toast('저장 창이 이미 열려 있습니다. 잠시 후 다시 눌러 주세요.', true);
+    else { $('mdText').value = md; $('mdModal').hidden = false; $('mdText').focus(); $('mdText').select(); }
+  });
+  $('mdClose').addEventListener('click', () => { $('mdModal').hidden = true; });
+  $('mdCopy').addEventListener('click', () => {
+    const ta = $('mdText');
+    const done = () => toast('복사했습니다.');
+    const fallback = () => { ta.focus(); ta.select(); toast('텍스트를 선택했습니다. Ctrl+C로 복사하세요.'); };
+    try { navigator.clipboard.writeText(ta.value).then(done, fallback); } catch (e) { fallback(); }
+  });
+
+  $('pdfBtn').addEventListener('click', async () => {
+    if (!dl) { toast('이 화면에서는 파일 저장을 쓸 수 없습니다. claude.ai에서 이 페이지를 열어 주세요.', true); return; }
+    if (!window.html2canvas || !window.jspdf) { toast('PDF 라이브러리를 불러오지 못했습니다. 새로고침 후 다시 시도해 주세요.', true); return; }
+    const btn = $('pdfBtn'); btn.disabled = true;
+    const orig = btn.lastChild.nodeValue;
+    try {
+      const fam = FONTS[state.font].name;
+      try { await Promise.all([document.fonts.load(`400 16px "${fam}"`, '가나다ABC123'), document.fonts.load(`700 16px "${fam}"`, '가나다ABC123')]); await document.fonts.ready; } catch (e) {}
+      prepareStage();
+      await Promise.all(Array.from(stage.querySelectorAll('img')).map(im => im.complete ? 0 : new Promise(r => { im.onload = im.onerror = r; })));
+      const pageH = (297 - 2 * state.margin) * MM;
+      const pages = computePages(stage, pageH);
+      const widthPx = (210 - 2 * state.margin) * MM;
+      const { jsPDF } = window.jspdf;
+      const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait', compress: true });
+      for (let i = 0; i < pages.length; i++) {
+        btn.lastChild.nodeValue = `PDF ${i + 1}/${pages.length}쪽`;
+        const [s, e] = pages[i];
+        const h = Math.max(1, Math.ceil(e - s));
+        stageWrap.style.height = h + 'px';
+        stage.style.marginTop = (-s) + 'px';
+        const canvas = await html2canvas(stageWrap, { scale: 2, backgroundColor: '#ffffff', logging: false, width: Math.ceil(widthPx), height: h });
+        const img = canvas.toDataURL('image/jpeg', 0.92);
+        if (i > 0) pdf.addPage();
+        pdf.addImage(img, 'JPEG', state.margin, state.margin, 210 - 2 * state.margin, h / MM, undefined, 'FAST');
+        if ($('optPageNo').checked) { pdf.setFontSize(9); pdf.setTextColor(90); pdf.text(`${i + 1} / ${pages.length}`, 105, 297 - state.margin / 2, { align: 'center' }); }
+      }
+      stage.innerHTML = ''; stage.style.marginTop = '0px'; stageWrap.style.height = 'auto';
+      btn.lastChild.nodeValue = orig;
+      const r = await save(safeName(state.name) + '.pdf', pdf.output('blob'));
+      if (r === 'saved') toast(`PDF ${pages.length}쪽을 저장했습니다.`);
+      else if (r === 'declined') toast('저장을 취소했습니다.');
+      else if (r === 'rate_limited') toast('저장 창이 이미 열려 있습니다. 잠시 후 다시 눌러 주세요.', true);
+      else toast('PDF를 저장하지 못했습니다 (' + r + ').', true);
+    } catch (e) {
+      toast('PDF를 만들지 못했습니다: ' + (e.message || e), true);
+    } finally {
+      btn.lastChild.nodeValue = orig; btn.disabled = false;
+      stage.innerHTML = ''; stage.style.marginTop = '0px'; stageWrap.style.height = 'auto';
+    }
+  });
+
+  // ---------- boot ----------
+  if (!loadDraft()) { editor.innerHTML = SAMPLE; state.isSample = true; }
+  applySettings();
+  document.fonts && document.fonts.ready.then(schedule);
+})();
+</script>
+
+</body></html>
